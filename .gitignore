@@ -1,0 +1,20 @@
+# MATLAB
+*.asv
+*.m~
+*.mex*
+*.mat
+*.slx.autosave
+*.slxc
+slprj/
+*.autosave
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Results and logs (optional - uncomment if you don't want to track)
+# results/
+# *.log
