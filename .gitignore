@@ -18,3 +18,6 @@ Thumbs.db
 # Results and logs (optional - uncomment if you don't want to track)
 # results/
 # *.log
+
+# Project resources
+src/resources/project
