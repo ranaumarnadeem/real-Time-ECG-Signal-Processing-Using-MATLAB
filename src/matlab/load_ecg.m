@@ -30,8 +30,7 @@ function [ecg, Fs, ann_samples, ann_symbols, info] = load_ecg(recordName, dataPa
     Fs = str2double(first{3});
     numSamples = str2double(first{4});
 
-    % READ SIGNAL
-    % MIT-BIH files use format 212 (2 samples encoded in 3 bytes)
+    % READ SIGNA
 
 
     fid = fopen(dat_file, 'r');
@@ -75,7 +74,7 @@ function [ecg, Fs, ann_samples, ann_symbols, info] = load_ecg(recordName, dataPa
 end
 
 
-% Helper: read MIT-BIH .atr annotation file (WFDB-free)
+%  .atr annotation file 
 
 function [annsamp, anntype] = readMITBIHAnnotations(atr_file)
     fid = fopen(atr_file, 'r');
