@@ -1,32 +1,36 @@
-function [filtered_ecg, filters_info] = filter_ecg(ecg_signal, Fs)
+function [filtered_ecg, filters_info] = filter_ecg(ecg_signal, Fs, make_plots)
  
-    fprintf('ECG Filtering');
     
-    % Store intermediate signals for analysis
-    intermediate_signals = struct();
+    if nargin < 3
+        make_plots = true;
+    end
+    
+    fprintf('=== ECG Filtering ===\n');
     
    
-    fprintf('1. Removing powerline interference (50 Hz)...\n');
-    ecg_no_pl = remove_powerline_noise(ecg_signal, Fs);
-    intermediate_signals.after_notch = ecg_no_pl;
+    if make_plots
+        fprintf('Analyzing original signal...\n');
+        plot_fft(ecg_signal, Fs, true);
+    end
     
-    %% Applying Bandpass Filter (5-15 Hz for QRS enhancement)
+   
+    fprintf('1. Removing 50 Hz noise...\n');
+    ecg_no_50hz = remove_powerline_noise(ecg_signal, Fs);
+    
+   
     fprintf('2. Applying bandpass filter (5-15 Hz)...\n');
-    ecg_bandpass = apply_bandpass_filter(ecg_no_pl, Fs);
-    intermediate_signals.after_bandpass = ecg_bandpass;
+    filtered_ecg = apply_bandpass_filter(ecg_no_50hz, Fs);
     
+  
+    if make_plots
+        fprintf('Analyzing filtered signal...\n');
+        plot_fft(filtered_ecg, Fs, true);
+    end
     
-    %% Store filter information
+  
     filters_info = struct();
     filters_info.Fs = Fs;
-    filters_info.intermediate_signals = intermediate_signals;
-    filters_info.filter_types = {'Notch (50 Hz)', 'Bandpass (5-15 Hz)', 'Smoothing'};
+    filters_info.filter_steps = {'50Hz_notch', '5-15Hz_bandpass'};
     
     fprintf('Filtering complete!\n');
-    fprintf('Signal improvement metrics:\n');
-    fprintf('  Original SNR: %.2f dB\n', calculate_snr(ecg_signal));
-    fprintf('  Filtered SNR: %.2f dB\n', calculate_snr(filtered_ecg));
-    
-    % Visualize filtering results
-    visualize_filtering_results(ecg_signal, filtered_ecg, intermediate_signals, Fs);
 end

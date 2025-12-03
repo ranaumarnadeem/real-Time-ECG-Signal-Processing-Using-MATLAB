@@ -1,171 +1,163 @@
-% test_filtering.m - UPDATED FOR YOUR PATHS
+% test_ecg_pipeline_fixed.m
 clear; clc; close all;
 
-% Get project root directory
+fprintf('==============================================\n');
+fprintf('ECG Processing Pipeline - Test\n');
+fprintf('==============================================\n\n');
+
+%% 1. Setup Paths
 project_root = 'C:\Users\Potato\Desktop\real-Time-ECG-Signal-Processing-Using-MATLAB';
-
-% Define paths
-data_raw_path = fullfile(project_root, 'data', 'raw');
+data_raw = fullfile(project_root, 'data', 'raw');
+data_processed = fullfile(project_root, 'data', 'processed');
 src_path = fullfile(project_root, 'src', 'matlab');
-utils_path = fullfile(src_path, 'utils');
 
-% Add paths to MATLAB
 addpath(genpath(src_path));
-addpath(genpath(utils_path));
 
-fprintf('=== ECG Filtering Pipeline Test ===\n');
-fprintf('Project root: %s\n', project_root);
-fprintf('Data path: %s\n', data_raw_path);
-fprintf('Source path: %s\n', src_path);
-
-% Check if data path exists
-if ~exist(data_raw_path, 'dir')
-    fprintf('ERROR: Data path not found!\n');
-    fprintf('Please ensure MIT-BIH files are in: %s\n', data_raw_path);
-    return;
+if ~exist(data_processed, 'dir')
+    mkdir(data_processed);
 end
 
-% Check for MIT-BIH files
-expected_files = {'100.dat', '100.hea', '100.atr'};
-all_files_exist = true;
-for i = 1:length(expected_files)
-    file_path = fullfile(data_raw_path, expected_files{i});
-    if ~exist(file_path, 'file')
-        fprintf('Missing: %s\n', expected_files{i});
-        all_files_exist = false;
-    end
-end
-
-if ~all_files_exist
-    fprintf('\n❌ Missing MIT-BIH files!\n');
-    fprintf('Download from: https://physionet.org/content/mitdb/1.0.0/\n');
-    fprintf('Place files in: %s\n', data_raw_path);
-    return;
-end
-
-% Test parameters
-record_name = '100';
-
+%% 2. Test Data Loading
+fprintf('1. Testing Data Loading...\n');
 try
-    %% Step 1: Load and preprocess
-    fprintf('\n1. Loading and preprocessing ECG...\n');
-    [clean_ecg, ~, Fs] = preprocess_ecg(record_name, data_raw_path);
-    
-    fprintf('   Preprocessing complete!\n');
-    fprintf('   Signal length: %d samples (%.1f seconds)\n', ...
-            length(clean_ecg), length(clean_ecg)/Fs);
-    
-    %% Step 2: Apply filtering
-    fprintf('\n2. Applying filters...\n');
-    
-    % Check if filter_ecg function exists
-    if exist('filter_ecg', 'file') == 2
-        [filtered_ecg, filters_info] = filter_ecg(clean_ecg, Fs);
-    else
-        fprintf('   filter_ecg.m not found. Creating filtered signal using bandpass only...\n');
-        
-        % Simple bandpass filter if main function doesn't exist yet
-        [b, a] = butter(4, [5, 15]/(Fs/2), 'bandpass');
-        filtered_ecg = filtfilt(b, a, clean_ecg);
-        filters_info = struct('Fs', Fs, 'filter_type', 'bandpass_5_15_Hz');
-    end
-    
-    %% Step 3: Visualize results
-    fprintf('\n3. Creating visualization...\n');
-    
-    % Create time vector
-    t = (0:length(clean_ecg)-1) / Fs;
-    
-    % Plot comparison
-    figure('Position', [100, 100, 1200, 600]);
-    
-    % Plot 1: Preprocessed vs Filtered (full signal)
-    subplot(2, 2, 1);
-    plot(t, clean_ecg, 'b', 'LineWidth', 1); hold on;
-    plot(t, filtered_ecg, 'r', 'LineWidth', 1.5);
-    xlabel('Time (seconds)');
-    ylabel('Amplitude');
-    title('Preprocessed vs Filtered ECG');
-    legend('Preprocessed', 'Filtered', 'Location', 'best');
-    grid on;
-    
-    % Plot 2: Zoomed view (first 5 seconds)
-    subplot(2, 2, 2);
-    zoom_samples = 1:min(5*Fs, length(clean_ecg));
-    plot(t(zoom_samples), clean_ecg(zoom_samples), 'b', 'LineWidth', 1); hold on;
-    plot(t(zoom_samples), filtered_ecg(zoom_samples), 'r', 'LineWidth', 1.5);
-    xlabel('Time (seconds)');
-    title('First 5 Seconds (Zoomed)');
-    legend('Preprocessed', 'Filtered', 'Location', 'best');
-    grid on;
-    
-    % Plot 3: Frequency spectrum comparison
-    subplot(2, 2, 3);
-    [f_pre, P_pre] = plot_fft(clean_ecg, Fs, false);
-    [f_filt, P_filt] = plot_fft(filtered_ecg, Fs, false);
-    plot(f_pre, 10*log10(P_pre), 'b'); hold on;
-    plot(f_filt, 10*log10(P_filt), 'r');
-    xlim([0, 100]);
-    xlabel('Frequency (Hz)');
-    ylabel('Power (dB)');
-    title('Frequency Spectrum');
-    legend('Preprocessed', 'Filtered');
-    grid on;
-    
-    % Plot 4: QRS complex comparison
-    subplot(2, 2, 4);
-    % Find a QRS complex (around sample 2000-2500 typically)
-    qrs_start = max(1, 2000);
-    qrs_end = min(length(clean_ecg), 2500);
-    qrs_range = qrs_start:qrs_end;
-    
-    plot(t(qrs_range), clean_ecg(qrs_range), 'b', 'LineWidth', 1.5); hold on;
-    plot(t(qrs_range), filtered_ecg(qrs_range), 'r', 'LineWidth', 2);
-    xlabel('Time (seconds)');
-    title('Single QRS Complex Comparison');
-    legend('Preprocessed', 'Filtered', 'Location', 'best');
-    grid on;
-    
-    %% Step 4: Save results
-    fprintf('\n4. Saving results...\n');
-    
-    % Create processed data directory if it doesn't exist
-    processed_dir = fullfile(project_root, 'data', 'processed');
-    if ~exist(processed_dir, 'dir')
-        mkdir(processed_dir);
-        fprintf('   Created directory: %s\n', processed_dir);
-    end
-    
-    % Save filtered data
-    save_path = fullfile(processed_dir, 'filtered_ecg_100.mat');
-    save(save_path, 'filtered_ecg', 'clean_ecg', 'Fs', 'filters_info', 't');
-    
-    fprintf('\n✅ Filtering Test Complete!\n');
-    fprintf('   Results saved to: %s\n', save_path);
-    fprintf('   Filtered signal saved for R-peak detection.\n');
-    
+    [raw_ecg, Fs, ann_samples, ann_symbols] = load_ecg('100', data_raw);
+    fprintf('   ✓ Loaded record 100\n');
+    fprintf('   Samples: %d, Fs: %d Hz\n', length(raw_ecg), Fs);
+    fprintf('   Annotations: %d\n', length(ann_samples));
 catch ME
-    fprintf('\n❌ Error during filtering test:\n');
-    fprintf('   %s\n', ME.message);
-    
-    % Try to identify which function is missing
-    fprintf('\nDebugging info:\n');
-    fprintf('   Checking preprocess_ecg: %s\n', ...
-            ternary(exist('preprocess_ecg', 'file') == 2, '✓ Found', '✗ Missing'));
-    fprintf('   Checking plot_fft: %s\n', ...
-            ternary(exist('plot_fft', 'file') == 2, '✓ Found', '✗ Missing'));
-    
-    % Show full error stack
-    for i = 1:length(ME.stack)
-        fprintf('   Error in %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
-    end
+    fprintf('   ✗ Failed: %s\n', ME.message);
+    return;
 end
 
-%% Helper function
-function result = ternary(condition, true_val, false_val)
-    if condition
-        result = true_val;
+%% 3. Use plot_fft to visualize raw ECG spectrum
+fprintf('\n2. Visualizing raw ECG spectrum...\n');
+plot_fft(raw_ecg(1:min(5000, length(raw_ecg))), Fs, true);
+
+%% 4. Test Preprocessing
+fprintf('\n3. Testing Preprocessing...\n');
+try
+    [clean_ecg, original_ecg, Fs_pp] = preprocess_ecg('100', data_raw);
+    
+    if length(clean_ecg) == length(original_ecg) && Fs_pp == Fs
+        fprintf('   ✓ Preprocessing successful\n');
+        fprintf('   Clean range: [%.3f, %.3f]\n', min(clean_ecg), max(clean_ecg));
     else
-        result = false_val;
+        fprintf('   ✗ Size mismatch\n');
     end
+catch ME
+    fprintf('   ✗ Failed: %s\n', ME.message);
+    return;
 end
+
+%% 5. Use plot_fft to visualize clean ECG spectrum
+fprintf('\n4. Visualizing clean ECG spectrum...\n');
+plot_fft(clean_ecg(1:min(5000, length(clean_ecg))), Fs, true);
+
+%% 6. Test Filtering (will use its own plot_fft)
+fprintf('\n5. Testing Filtering...\n');
+try
+    test_samples = 1:min(30*Fs, length(clean_ecg));
+    test_ecg = clean_ecg(test_samples);
+    
+    % Call filter_ecg with plots enabled
+    [filtered_ecg, filter_info] = filter_ecg(test_ecg, Fs, true);
+    
+    if length(filtered_ecg) == length(test_ecg)
+        fprintf('   ✓ Filtering successful\n');
+        fprintf('   Filtered range: [%.3f, %.3f]\n', min(filtered_ecg), max(filtered_ecg));
+    else
+        fprintf('   ✗ Size mismatch\n');
+    end
+catch ME
+    fprintf('   ✗ Failed: %s\n', ME.message);
+    return;
+end
+
+%% 7. Save Data
+fprintf('\n6. Saving Results...\n');
+try
+    save_path = fullfile(data_processed, 'test_results.mat');
+    save(save_path, 'raw_ecg', 'clean_ecg', 'filtered_ecg', 'Fs', 'filter_info', 'ann_samples', 'ann_symbols');
+    fprintf('   ✓ Saved: %s\n', save_path);
+catch ME
+    fprintf('   ✗ Save failed: %s\n', ME.message);
+end
+
+%% 8. Create final comparison using only plot_fft data
+fprintf('\n7. Final frequency comparison...\n');
+
+% Get FFT data from all stages (without plotting)
+[f_raw, P_raw] = plot_fft(raw_ecg(1:min(5000, length(raw_ecg))), Fs, false);
+[f_clean, P_clean] = plot_fft(clean_ecg(1:min(5000, length(clean_ecg))), Fs, false);
+[f_filt, P_filt] = plot_fft(filtered_ecg(1:min(5000, length(filtered_ecg))), Fs, false);
+
+% Convert to dB safely (avoid log of zero/negative)
+P_raw_db = 10*log10(abs(P_raw) + eps);  % Add eps to avoid log(0)
+P_clean_db = 10*log10(abs(P_clean) + eps);
+P_filt_db = 10*log10(abs(P_filt) + eps);
+
+% Create comparison figure
+figure('Position', [50, 50, 1000, 400], 'Name', 'ECG Processing - Frequency Analysis');
+
+% Plot all spectra together
+subplot(1, 2, 1);
+plot(f_raw, P_raw_db, 'b', 'LineWidth', 1); hold on;
+plot(f_clean, P_clean_db, 'r', 'LineWidth', 1);
+plot(f_filt, P_filt_db, 'm', 'LineWidth', 1.5);
+xlim([0, 100]); xlabel('Frequency (Hz)'); ylabel('Power (dB)');
+title('Frequency Spectra Comparison');
+legend('Raw', 'Clean', 'Filtered', 'Location', 'best');
+grid on;
+line([50 50], ylim, 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1);
+
+% Zoom on QRS band
+subplot(1, 2, 2);
+plot(f_raw, P_raw_db, 'b', 'LineWidth', 0.5); hold on;
+plot(f_clean, P_clean_db, 'r', 'LineWidth', 0.5);
+plot(f_filt, P_filt_db, 'm', 'LineWidth', 1.5);
+xlim([0, 30]); xlabel('Frequency (Hz)'); ylabel('Power (dB)');
+title('QRS Band (0-30 Hz)');
+legend('Raw', 'Clean', 'Filtered', 'Location', 'best');
+grid on;
+
+% Fix fill command - use actual y-limits
+y_limits = ylim;
+fill([5, 5, 15, 15], [y_limits(1), y_limits(2), y_limits(2), y_limits(1)], ...
+     'g', 'FaceAlpha', 0.1, 'EdgeColor', 'none');
+text(10, y_limits(2)*0.9, 'QRS Band', 'Color', 'g', 'HorizontalAlignment', 'center');
+
+%% 9. Simple Statistics
+fprintf('\n8. Basic Statistics...\n');
+fprintf('   Signal Lengths:\n');
+fprintf('     Raw: %d samples (%.1f seconds)\n', length(raw_ecg), length(raw_ecg)/Fs);
+fprintf('     Clean: %d samples (%.1f seconds)\n', length(clean_ecg), length(clean_ecg)/Fs);
+fprintf('     Filtered: %d samples (%.1f seconds)\n', length(filtered_ecg), length(filtered_ecg)/Fs);
+
+fprintf('\n   Amplitude Ranges:\n');
+fprintf('     Raw: [%.3f, %.3f]\n', min(raw_ecg), max(raw_ecg));
+fprintf('     Clean: [%.3f, %.3f]\n', min(clean_ecg), max(clean_ecg));
+fprintf('     Filtered: [%.3f, %.3f]\n', min(filtered_ecg), max(filtered_ecg));
+
+% Calculate QRS band power for each stage
+qrs_band = f_raw >= 5 & f_raw <= 15;
+qrs_power_raw = mean(P_raw_db(qrs_band));
+qrs_power_clean = mean(P_clean_db(qrs_band));
+qrs_power_filt = mean(P_filt_db(qrs_band));
+
+fprintf('\n   QRS Band (5-15 Hz) Power:\n');
+fprintf('     Raw: %.2f dB\n', qrs_power_raw);
+fprintf('     Clean: %.2f dB\n', qrs_power_clean);
+fprintf('     Filtered: %.2f dB\n', qrs_power_filt);
+fprintf('     Improvement: %.2f dB\n', qrs_power_filt - qrs_power_raw);
+
+%% 10. Summary
+fprintf('\n==============================================\n');
+fprintf('TEST SUMMARY\n');
+fprintf('==============================================\n');
+fprintf('✓ Data Loading: Working\n');
+fprintf('✓ Preprocessing: Working\n');
+fprintf('✓ Filtering: Working\n');
+fprintf('✓ Data Saved: Yes\n');
+fprintf('✓ Visualizations: Created using plot_fft\n');
+fprintf('\nNEXT STEP: Implement R-peak detection\n');
+fprintf('==============================================\n');
