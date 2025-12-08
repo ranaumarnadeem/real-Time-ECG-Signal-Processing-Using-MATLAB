@@ -71,6 +71,27 @@ try
     fprintf('\n=== Detecting R-Peaks ===\n');
     [r_locs, r_peaks] = r_peak_detection(clean_ecg, Fs);
     fprintf('Detected %d R-peaks.\n', length(r_locs));
+    %% -----------------------------
+%% P & T WAVE DETECTION
+%% -----------------------------
+fprintf('\n=== Detecting P and T Waves ===\n');
+
+[P_locs, T_locs, P_peaks, T_peaks] = detect_p_t_waves(clean_ecg, r_locs, Fs);
+
+fprintf('Detected %d P-waves and %d T-waves.\n', length(P_locs), length(T_locs));
+
+% Plot on the same figure as R-peaks
+figure('Name','P, QRS, and T Wave Detection','Position',[100 100 1100 400]);
+plot(t, clean_ecg, 'b'); hold on;
+scatter(r_locs/Fs, r_peaks, 40, 'r', 'filled');   % R-peaks
+scatter(P_locs/Fs, P_peaks, 40, 'g', 'filled');   % P-waves
+scatter(T_locs/Fs, T_peaks, 40, 'm', 'filled');   % T-waves
+legend('Clean ECG','R-peaks','P-waves','T-waves');
+xlabel('Time (s)'); ylabel('Amplitude');
+title('Detected P, QRS, and T Waves');
+grid on;
+
+    
 
     % Plot R-peaks
     figure('Name','R-Peaks on Clean ECG','Position',[100 100 1000 400]);
@@ -104,3 +125,4 @@ try
 catch ME
     fprintf('Error in preprocessing or R-peak detection: %s\n', ME.message);
 end
+
