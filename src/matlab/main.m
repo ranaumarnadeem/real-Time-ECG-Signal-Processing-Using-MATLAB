@@ -267,6 +267,23 @@ if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
         
         % Panel 3: Final Signal with R-Peaks and Heart Rate
         subplot(3,1,3);
+        plot(t_filt(idx_filt), filtered_ecg(idx_filt), 'g', 'LineWidth', 1);
+        hold on;
+        scatter(r_locs(r_idx)/Fs, r_peaks(r_idx), 100, 'r', 'filled', 'MarkerEdgeColor', 'k', 'LineWidth', 1.5);
+        xlabel('Time (s)'); ylabel('Amplitude');
+        title('3. R-Peak Detection', 'FontSize', 12, 'FontWeight', 'bold');
+        legend('Filtered ECG', 'R-Peaks', 'Location', 'best');
+        grid on; xlim([0 display_duration]);
+        
+        sgtitle(sprintf('ECG Signal Processing Pipeline - Record %s', record_name), ...
+            'FontSize', 14, 'FontWeight', 'bold');
+        
+        % Save comprehensive plot
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        saveas(fig2, fullfile(results_plots, sprintf('pipeline_results_%s_%s.png', record_name, timestamp)));
+        
+        % Create separate PQRST detection figure
+        fig3 = figure('Name', 'Complete PQRST Detection', 'Position', [100, 100, 1600, 600]);
         plot(t_filt(idx_filt), filtered_ecg(idx_filt), 'Color', [0.3 0.3 0.3], 'LineWidth', 1.2); hold on;
         
         % Plot P-waves (blue)
@@ -296,35 +313,35 @@ if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
             end
         end
         
-        xlabel('Time (s)'); ylabel('Amplitude');
-        title('3. Complete PQRST Detection with Heart Rate', 'FontSize', 12, 'FontWeight', 'bold');
+        xlabel('Time (s)', 'FontSize', 11); 
+        ylabel('Amplitude', 'FontSize', 11);
+        title(sprintf('Complete PQRST Detection with Heart Rate - Record %s', record_name), ...
+            'FontSize', 13, 'FontWeight', 'bold');
         if exist('P_locs', 'var') && ~isempty(P_locs) && exist('T_locs', 'var') && ~isempty(T_locs)
-            legend('Filtered ECG', 'P-Waves', 'R-Peaks', 'T-Waves', 'Location', 'best');
+            legend('Filtered ECG', 'P-Waves', 'R-Peaks', 'T-Waves', 'Location', 'best', 'FontSize', 10);
         else
-            legend('Filtered ECG', 'R-Peaks', 'Location', 'best');
+            legend('Filtered ECG', 'R-Peaks', 'Location', 'best', 'FontSize', 10);
         end
         grid on; xlim([0 display_duration]);
         
-        sgtitle(sprintf('ECG Signal Processing Pipeline - Record %s', record_name), ...
-            'FontSize', 14, 'FontWeight', 'bold');
-        
-        % Save comprehensive plot
-        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-        saveas(fig2, fullfile(results_plots, sprintf('pipeline_results_%s_%s.png', record_name, timestamp)));
+        % Save PQRST detection plot separately
+        saveas(fig3, fullfile(results_plots, sprintf('pqrst_detection_%s_%s.png', record_name, timestamp)));
         
         fprintf('✓ Visualization created successfully\n');
         fprintf('  • Showing first %.1f seconds\n', display_duration);
         fprintf('  • Panel 1: Raw signal\n');
         fprintf('  • Panel 2: Filtered signal\n');
-        fprintf('  • Panel 3: Complete PQRST detection with heart rates\n');
-        if exist('P_locs', 'var') && ~isempty(P_locs)
-            fprintf('  • Blue markers: P-waves\n');
-        end
-        fprintf('  • Red markers: R-peaks\n');
-        if exist('T_locs', 'var') && ~isempty(T_locs)
-            fprintf('  • Green markers: T-waves\n');
-        end
+        fprintf('  • Panel 3: R-peak detection\n');
         fprintf('  • Saved to: results/plots/pipeline_results_%s_%s.png\n', record_name, timestamp);
+        fprintf('  • Separate PQRST plot created:\n');
+        if exist('P_locs', 'var') && ~isempty(P_locs)
+            fprintf('    - Blue markers: P-waves\n');
+        end
+        fprintf('    - Red markers: R-peaks\n');
+        if exist('T_locs', 'var') && ~isempty(T_locs)
+            fprintf('    - Green markers: T-waves\n');
+        end
+        fprintf('  • Saved to: results/plots/pqrst_detection_%s_%s.png\n', record_name, timestamp);
         
     catch ME
         fprintf('⚠ WARNING: Visualization failed\n');
