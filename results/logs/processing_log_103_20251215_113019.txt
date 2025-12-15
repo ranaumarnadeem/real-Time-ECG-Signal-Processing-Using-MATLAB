@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════════════
+ECG SIGNAL PROCESSING LOG
+═══════════════════════════════════════════════════════════
+
+Timestamp: 15-Dec-2025 11:30:20
+Record: 103
+
+SIGNAL INFORMATION:
+  - Total Samples: 650000
+  - Sampling Rate: 360 Hz
+  - Duration: 1805.56 seconds (30.09 minutes)
+
+PROCESSING STEPS:
+  ✓ Step 1: ECG data loaded
+  ✓ Step 2: Preprocessing (DC removal, baseline correction, normalization)
+  ✓ Step 3: Filtering (50Hz notch + 5-15Hz bandpass)
+  ✓ Step 4: R-peak detection (Pan-Tompkins)
+  ✓ Step 5: Heart rate analysis
+
+DETECTION RESULTS:
+  - R-peaks detected: 146
+  - P-waves detected: 146
+  - T-waves detected: 146
+  - Complete PQRST complexes: 146
+  - Annotations available: 3
+  - Mean Heart Rate: 166.7 BPM
+  - HR Range: 72.0 - 327.3 BPM
+  - HR Std Dev: 62.5 BPM
+  - Mean RR Interval: 0.411 seconds
+
+OUTPUT FILES:
+  - Data: results/reports/ecg_results_103_20251215_113019.mat
+  - Plots: results/plots/pipeline_results_103_20251215_113019.png
+  - Log: results/logs/processing_log_103_20251215_113019.txt
+
+═══════════════════════════════════════════════════════════
+Processing completed successfully
+═══════════════════════════════════════════════════════════

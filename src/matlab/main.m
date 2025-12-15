@@ -24,9 +24,11 @@ results_plots = fullfile(results_dir, 'plots');
 results_reports = fullfile(results_dir, 'reports');
 addpath(genpath(matlab_dir));
 
-% Configuration
-record_name = '100';  % MIT-BIH record to process
-visualize = true;     % Enable visualizations
+%% ============================================================
+%  USER CONFIGURATION - CHANGE RECORD NAME HERE
+%% ============================================================
+record_name = '104';  % Change this to process different ECG records (e.g., '101', '102', '103', etc.)
+visualize = true;     % Enable visualizations (set to false for faster processing)
 
 % Create output directories
 if ~exist(data_processed, 'dir')
@@ -157,8 +159,6 @@ try
         fprintf('\n');
     end
     
-
-    
 catch ME
     fprintf('✗ ERROR: R-peak detection failed\n');
     fprintf('  Reason: %s\n', ME.message);
@@ -166,6 +166,32 @@ catch ME
 end
 
 fprintf('\n');
+
+%% ============================================================
+%  STEP 4.5: DETECT P AND T WAVES
+%% ============================================================
+
+fprintf('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+fprintf('STEP 4.5: P and T Wave Detection\n');
+fprintf('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+try
+    [P_locs, T_locs, P_peaks, T_peaks] = detect_p_t_waves(filtered_ecg, r_locs, Fs);
+    
+    fprintf('✓ P and T wave detection completed\n');
+    fprintf('  • P-waves detected: %d\n', length(P_locs));
+    fprintf('  • T-waves detected: %d\n', length(T_locs));
+    fprintf('  • Complete PQRST complexes identified: %d\n', length(r_locs));
+    
+catch ME
+    fprintf('⚠ WARNING: P-T wave detection failed\n');
+    fprintf('  Reason: %s\n', ME.message);
+    fprintf('  Continuing without P-T wave data...\n');
+    P_locs = [];
+    T_locs = [];
+    P_peaks = [];
+    T_peaks = [];
+end
 
 %% ============================================================
 %  STEP 5: COMPUTE RR INTERVALS & HEART RATE
@@ -241,8 +267,22 @@ if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
         
         % Panel 3: Final Signal with R-Peaks and Heart Rate
         subplot(3,1,3);
-        plot(t_filt(idx_filt), filtered_ecg(idx_filt), 'k', 'LineWidth', 1); hold on;
+        plot(t_filt(idx_filt), filtered_ecg(idx_filt), 'Color', [0.3 0.3 0.3], 'LineWidth', 1.2); hold on;
+        
+        % Plot P-waves (blue)
+        if exist('P_locs', 'var') && ~isempty(P_locs)
+            p_idx = P_locs/Fs <= display_duration;
+            scatter(P_locs(p_idx)/Fs, P_peaks(p_idx), 80, 'b', 'filled', 'MarkerEdgeColor', 'k', 'LineWidth', 1);
+        end
+        
+        % Plot R-peaks (red)
         scatter(r_locs(r_idx)/Fs, r_peaks(r_idx), 100, 'r', 'filled', 'MarkerEdgeColor', 'k', 'LineWidth', 1.5);
+        
+        % Plot T-waves (green)
+        if exist('T_locs', 'var') && ~isempty(T_locs)
+            t_idx = T_locs/Fs <= display_duration;
+            scatter(T_locs(t_idx)/Fs, T_peaks(t_idx), 80, 'g', 'filled', 'MarkerEdgeColor', 'k', 'LineWidth', 1);
+        end
         
         % Add heart rate annotations between R-peaks
         if ~isempty(HR) && length(r_locs(r_idx)) > 1
@@ -257,8 +297,12 @@ if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
         end
         
         xlabel('Time (s)'); ylabel('Amplitude');
-        title('3. Final Signal with Detected R-Peaks & Heart Rate', 'FontSize', 12, 'FontWeight', 'bold');
-        legend('Filtered ECG', 'R-Peaks', 'Location', 'best');
+        title('3. Complete PQRST Detection with Heart Rate', 'FontSize', 12, 'FontWeight', 'bold');
+        if exist('P_locs', 'var') && ~isempty(P_locs) && exist('T_locs', 'var') && ~isempty(T_locs)
+            legend('Filtered ECG', 'P-Waves', 'R-Peaks', 'T-Waves', 'Location', 'best');
+        else
+            legend('Filtered ECG', 'R-Peaks', 'Location', 'best');
+        end
         grid on; xlim([0 display_duration]);
         
         sgtitle(sprintf('ECG Signal Processing Pipeline - Record %s', record_name), ...
@@ -272,7 +316,14 @@ if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
         fprintf('  • Showing first %.1f seconds\n', display_duration);
         fprintf('  • Panel 1: Raw signal\n');
         fprintf('  • Panel 2: Filtered signal\n');
-        fprintf('  • Panel 3: Final signal with R-peaks and heart rates\n');
+        fprintf('  • Panel 3: Complete PQRST detection with heart rates\n');
+        if exist('P_locs', 'var') && ~isempty(P_locs)
+            fprintf('  • Blue markers: P-waves\n');
+        end
+        fprintf('  • Red markers: R-peaks\n');
+        if exist('T_locs', 'var') && ~isempty(T_locs)
+            fprintf('  • Green markers: T-waves\n');
+        end
         fprintf('  • Saved to: results/plots/pipeline_results_%s_%s.png\n', record_name, timestamp);
         
     catch ME
@@ -299,9 +350,16 @@ try
     save_path = fullfile(results_reports, save_filename);
     
     % Save all important variables
-    save(save_path, 'record_name', 'raw_ecg', 'clean_ecg', 'filtered_ecg', ...
-        'Fs', 'filter_info', 'r_locs', 'r_peaks', 'RR_intervals', 'HR', ...
-        'ann_samples', 'ann_symbols', 'duration');
+    if exist('P_locs', 'var') && exist('T_locs', 'var')
+        save(save_path, 'record_name', 'raw_ecg', 'clean_ecg', 'filtered_ecg', ...
+            'Fs', 'filter_info', 'r_locs', 'r_peaks', 'RR_intervals', 'HR', ...
+            'P_locs', 'P_peaks', 'T_locs', 'T_peaks', ...
+            'ann_samples', 'ann_symbols', 'duration');
+    else
+        save(save_path, 'record_name', 'raw_ecg', 'clean_ecg', 'filtered_ecg', ...
+            'Fs', 'filter_info', 'r_locs', 'r_peaks', 'RR_intervals', 'HR', ...
+            'ann_samples', 'ann_symbols', 'duration');
+    end
     
     [~, fname, ext] = fileparts(save_path);
     fprintf('✓ Results saved successfully\n');
@@ -334,6 +392,15 @@ try
     fprintf(log_fid, '\n');
     fprintf(log_fid, 'DETECTION RESULTS:\n');
     fprintf(log_fid, '  - R-peaks detected: %d\n', length(r_locs));
+    if exist('P_locs', 'var') && ~isempty(P_locs)
+        fprintf(log_fid, '  - P-waves detected: %d\n', length(P_locs));
+    end
+    if exist('T_locs', 'var') && ~isempty(T_locs)
+        fprintf(log_fid, '  - T-waves detected: %d\n', length(T_locs));
+    end
+    if exist('P_locs', 'var') && ~isempty(P_locs) && exist('T_locs', 'var') && ~isempty(T_locs)
+        fprintf(log_fid, '  - Complete PQRST complexes: %d\n', min([length(P_locs), length(r_locs), length(T_locs)]));
+    end
     fprintf(log_fid, '  - Annotations available: %d\n', length(ann_samples));
     if ~isempty(HR)
         fprintf(log_fid, '  - Mean Heart Rate: %.1f BPM\n', mean(HR));
@@ -375,6 +442,9 @@ fprintf('  ✓ Data Loaded: Record %s (%.1fs)\n', record_name, duration);
 fprintf('  ✓ Preprocessing: DC removal, baseline correction, normalization\n');
 fprintf('  ✓ Filtering: 50Hz notch + 5-15Hz bandpass\n');
 fprintf('  ✓ R-Peak Detection: %d peaks detected\n', length(r_locs));
+if exist('P_locs', 'var') && ~isempty(P_locs) && exist('T_locs', 'var') && ~isempty(T_locs)
+    fprintf('  ✓ PQRST Detection: %d P-waves, %d T-waves\n', length(P_locs), length(T_locs));
+end
 if ~isempty(HR)
     fprintf('  ✓ Heart Rate: %.1f BPM (mean)\n', mean(HR));
 end
