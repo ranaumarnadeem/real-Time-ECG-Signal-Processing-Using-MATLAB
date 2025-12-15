@@ -41,7 +41,8 @@ real-Time-ECG-Signal-Processing-Using-MATLAB/
 ├── results/
 │   ├── plots/
 │   │   ├── raw_ecg_[record]_[timestamp].png
-│   │   └── pipeline_results_[record]_[timestamp].png
+│   │   ├── pipeline_results_[record]_[timestamp].png
+│   │   └── pqrst_detection_[record]_[timestamp].png
 │   ├── reports/
 │   │   └── ecg_results_[record]_[timestamp].mat
 │   └── logs/
@@ -69,8 +70,9 @@ real-Time-ECG-Signal-Processing-Using-MATLAB/
   - Statistical HRV metrics (mean, std dev, range)
 - **Comprehensive Visualization**: 
   - Time-domain signal plots
-  - Multi-panel processing pipeline visualization
-  - Annotated R-peaks with heart rate labels
+  - Multi-panel processing pipeline visualization (raw, filtered, R-peak detection)
+  - Separate full-size PQRST detection plot with color-coded waves
+  - P-waves (blue), R-peaks (red), T-waves (green)
   - Comparative plots (raw vs filtered signals)
 - **Automated Result Management**:
   - Timestamped file generation
@@ -101,9 +103,15 @@ Download and install the WFDB Toolbox from PhysioNet to read MIT-BIH format file
 addpath(genpath('path/to/wfdb-toolbox'));
 ```
 
-### 3. Run the Complete Pipeline
+### 3. Configure and Run the Pipeline
 
-Navigate to the source directory and run the main script:
+Open `src/matlab/main.m` and set the record name (line 30):
+
+```matlab
+record_name = '100';  % Change to '101', '102', '103', etc.
+```
+
+Then navigate to the source directory and run:
 
 ```matlab
 cd src/matlab
@@ -112,10 +120,10 @@ main
 
 The pipeline will automatically:
 - Load ECG data from `data/raw/`
-- Process through all stages
-- Generate plots in `results/plots/`
+- Process through all stages (preprocessing, filtering, detection)
+- Generate multiple plots in `results/plots/`
 - Save processed data to `results/reports/`
-- Create processing log in `results/logs/`
+- Create detailed processing log in `results/logs/`
 
 ## Module Descriptions
 
@@ -155,14 +163,25 @@ Integration tests for complete pipeline validation.
 ### Results Directory Structure
 
 **`results/plots/`**
-- `raw_ecg_[record]_[timestamp].png` - Raw ECG signal visualization
-- `pipeline_results_[record]_[timestamp].png` - Complete 3-panel processing pipeline results
+- `raw_ecg_[record]_[timestamp].png` - Raw ECG signal visualization (first 10 seconds)
+- `pipeline_results_[record]_[timestamp].png` - 3-panel processing pipeline (raw → filtered → R-peaks)
+- `pqrst_detection_[record]_[timestamp].png` - Standalone PQRST complex detection with color-coded waves
 
 **`results/reports/`**
-- `ecg_results_[record]_[timestamp].mat` - Processed data including all variables (raw_ecg, filtered_ecg, r_locs, HR, RR_intervals, etc.)
+- `ecg_results_[record]_[timestamp].mat` - Complete processed data including:
+  - Signal data (raw_ecg, filtered_ecg)
+  - Detection results (r_locs, P_locs, T_locs)
+  - HRV metrics (HR, RR_intervals)
+  - Annotations (ann_samples, ann_symbols)
 
 **`results/logs/`**
-- `processing_log_[record]_[timestamp].txt` - Detailed processing log with timestamp, signal information, processing steps, detection results, and output file locations
+- `processing_log_[record]_[timestamp].txt` - Detailed processing log with:
+  - Timestamp and record information
+  - Signal parameters (sampling rate, duration)
+  - Processing steps completed
+  - Detection statistics (R-peaks, P-waves, T-waves)
+  - Heart rate metrics
+  - Output file locations
 
 ## Filter Specifications
 
@@ -249,17 +268,23 @@ end
 
 ## Configuration
 
-Edit `main.m` to customize processing parameters:
+Edit `src/matlab/main.m` to customize processing parameters:
 
 ```matlab
-% Line 21: Change ECG record
-record_name = '100';  % Options: '100', '101', '102', etc.
-
-% Line 22: Enable/disable visualizations
+%% USER CONFIGURATION - CHANGE RECORD NAME HERE
+record_name = '100';  % Change to '101', '102', '103', etc.
 visualize = true;     % Set to false for faster processing
+```
 
-% Line 114: Adjust processing duration
+Simply change the `record_name` variable to process different ECG records from your `data/raw/` directory.
+
+Advanced options:
+```matlab
+% Adjust processing duration (around line 120)
 test_samples = 1:min(60*Fs, length(clean_ecg));  % Process N seconds
+
+% Adjust display duration for plots (around line 250)
+display_duration = min(10, length(filtered_ecg)/Fs);  % Show N seconds
 ```
 
 ## Troubleshooting

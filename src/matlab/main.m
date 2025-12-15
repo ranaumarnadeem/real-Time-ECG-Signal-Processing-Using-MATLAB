@@ -301,18 +301,6 @@ if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
             scatter(T_locs(t_idx)/Fs, T_peaks(t_idx), 80, 'g', 'filled', 'MarkerEdgeColor', 'k', 'LineWidth', 1);
         end
         
-        % Add heart rate annotations between R-peaks
-        if ~isempty(HR) && length(r_locs(r_idx)) > 1
-            r_times = r_locs(r_idx) / Fs;
-            for i = 1:length(r_times)-1
-                mid_time = (r_times(i) + r_times(i+1)) / 2;
-                mid_y = max(filtered_ecg(idx_filt)) * 0.8;
-                text(mid_time, mid_y, sprintf('%.0f BPM', HR(i)), ...
-                    'HorizontalAlignment', 'center', 'FontSize', 9, ...
-                    'BackgroundColor', 'white', 'EdgeColor', 'blue', 'FontWeight', 'bold');
-            end
-        end
-        
         xlabel('Time (s)', 'FontSize', 11); 
         ylabel('Amplitude', 'FontSize', 11);
         title(sprintf('Complete PQRST Detection with Heart Rate - Record %s', record_name), ...
