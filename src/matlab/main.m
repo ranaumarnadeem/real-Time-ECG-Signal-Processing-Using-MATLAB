@@ -18,17 +18,30 @@ project_root = fileparts(src_dir);
 % Setup paths
 data_raw = fullfile(project_root, 'data', 'raw');
 data_processed = fullfile(project_root, 'data', 'processed');
+results_dir = fullfile(project_root, 'results');
+results_logs = fullfile(results_dir, 'logs');
+results_plots = fullfile(results_dir, 'plots');
+results_reports = fullfile(results_dir, 'reports');
 addpath(genpath(matlab_dir));
 
 % Configuration
 record_name = '100';  % MIT-BIH record to process
 visualize = true;     % Enable visualizations
 
-% Create output directory
+% Create output directories
 if ~exist(data_processed, 'dir')
     mkdir(data_processed);
-    fprintf(' Created output directory: %s\n\n', data_processed);
 end
+if ~exist(results_logs, 'dir')
+    mkdir(results_logs);
+end
+if ~exist(results_plots, 'dir')
+    mkdir(results_plots);
+end
+if ~exist(results_reports, 'dir')
+    mkdir(results_reports);
+end
+fprintf(' Created/verified output directories\n\n');
 
 fprintf(' Project Root: %s\n', project_root);
 fprintf(' Processing Record: %s\n\n', record_name);
@@ -53,12 +66,16 @@ try
     
     % Quick visualization of raw ECG
     if visualize
-        figure('Name', 'Raw ECG Signal', 'Position', [50, 50, 1200, 400]);
+        fig1 = figure('Name', 'Raw ECG Signal', 'Position', [50, 50, 1200, 400]);
         t_raw = (0:length(raw_ecg)-1) / Fs;
         plot(t_raw, raw_ecg, 'b', 'LineWidth', 0.8);
         xlabel('Time (s)'); ylabel('Amplitude (mV)');
         title(sprintf('Raw ECG Signal - Record %s', record_name));
         grid on; xlim([0, min(10, duration)]);
+        
+        % Save plot
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        saveas(fig1, fullfile(results_plots, sprintf('raw_ecg_%s_%s.png', record_name, timestamp)));
     end
     
 catch ME
@@ -196,7 +213,7 @@ fprintf('━━━━━━━━━━━━━━━━━━━━━━━�
 if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
     try
         % Create comprehensive figure
-        figure('Name', 'ECG Processing Pipeline Results', 'Position', [50, 50, 1400, 900]);
+        fig2 = figure('Name', 'ECG Processing Pipeline Results', 'Position', [50, 50, 1400, 900]);
         
         % Time vectors
         t_raw = (0:length(raw_ecg)-1) / Fs;
@@ -247,11 +264,16 @@ if visualize && exist('r_locs', 'var') && ~isempty(r_locs)
         sgtitle(sprintf('ECG Signal Processing Pipeline - Record %s', record_name), ...
             'FontSize', 14, 'FontWeight', 'bold');
         
+        % Save comprehensive plot
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        saveas(fig2, fullfile(results_plots, sprintf('pipeline_results_%s_%s.png', record_name, timestamp)));
+        
         fprintf('✓ Visualization created successfully\n');
         fprintf('  • Showing first %.1f seconds\n', display_duration);
         fprintf('  • Panel 1: Raw signal\n');
         fprintf('  • Panel 2: Filtered signal\n');
         fprintf('  • Panel 3: Final signal with R-peaks and heart rates\n');
+        fprintf('  • Saved to: results/plots/pipeline_results_%s_%s.png\n', record_name, timestamp);
         
     catch ME
         fprintf('⚠ WARNING: Visualization failed\n');
@@ -271,8 +293,10 @@ fprintf('━━━━━━━━━━━━━━━━━━━━━━━�
 
 try
     timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+    
+    % Save processed data to results/reports
     save_filename = sprintf('ecg_results_%s_%s.mat', record_name, timestamp);
-    save_path = fullfile(data_processed, save_filename);
+    save_path = fullfile(results_reports, save_filename);
     
     % Save all important variables
     save(save_path, 'record_name', 'raw_ecg', 'clean_ecg', 'filtered_ecg', ...
@@ -282,8 +306,54 @@ try
     [~, fname, ext] = fileparts(save_path);
     fprintf('✓ Results saved successfully\n');
     fprintf('  • File: %s%s\n', fname, ext);
-    fprintf('  • Location: %s\n', data_processed);
+    fprintf('  • Location: results/reports/\n');
     fprintf('  • Size: %.2f KB\n', dir(save_path).bytes/1024);
+    
+    % Create processing log
+    log_filename = sprintf('processing_log_%s_%s.txt', record_name, timestamp);
+    log_path = fullfile(results_logs, log_filename);
+    log_fid = fopen(log_path, 'w');
+    
+    fprintf(log_fid, '═══════════════════════════════════════════════════════════\n');
+    fprintf(log_fid, 'ECG SIGNAL PROCESSING LOG\n');
+    fprintf(log_fid, '═══════════════════════════════════════════════════════════\n\n');
+    fprintf(log_fid, 'Timestamp: %s\n', datestr(now));
+    fprintf(log_fid, 'Record: %s\n', record_name);
+    fprintf(log_fid, '\n');
+    fprintf(log_fid, 'SIGNAL INFORMATION:\n');
+    fprintf(log_fid, '  - Total Samples: %d\n', length(raw_ecg));
+    fprintf(log_fid, '  - Sampling Rate: %d Hz\n', Fs);
+    fprintf(log_fid, '  - Duration: %.2f seconds (%.2f minutes)\n', duration, duration/60);
+    fprintf(log_fid, '\n');
+    fprintf(log_fid, 'PROCESSING STEPS:\n');
+    fprintf(log_fid, '  ✓ Step 1: ECG data loaded\n');
+    fprintf(log_fid, '  ✓ Step 2: Preprocessing (DC removal, baseline correction, normalization)\n');
+    fprintf(log_fid, '  ✓ Step 3: Filtering (50Hz notch + 5-15Hz bandpass)\n');
+    fprintf(log_fid, '  ✓ Step 4: R-peak detection (Pan-Tompkins)\n');
+    fprintf(log_fid, '  ✓ Step 5: Heart rate analysis\n');
+    fprintf(log_fid, '\n');
+    fprintf(log_fid, 'DETECTION RESULTS:\n');
+    fprintf(log_fid, '  - R-peaks detected: %d\n', length(r_locs));
+    fprintf(log_fid, '  - Annotations available: %d\n', length(ann_samples));
+    if ~isempty(HR)
+        fprintf(log_fid, '  - Mean Heart Rate: %.1f BPM\n', mean(HR));
+        fprintf(log_fid, '  - HR Range: %.1f - %.1f BPM\n', min(HR), max(HR));
+        fprintf(log_fid, '  - HR Std Dev: %.1f BPM\n', std(HR));
+        fprintf(log_fid, '  - Mean RR Interval: %.3f seconds\n', mean(RR_intervals));
+    end
+    fprintf(log_fid, '\n');
+    fprintf(log_fid, 'OUTPUT FILES:\n');
+    fprintf(log_fid, '  - Data: results/reports/%s\n', save_filename);
+    fprintf(log_fid, '  - Plots: results/plots/pipeline_results_%s_%s.png\n', record_name, timestamp);
+    fprintf(log_fid, '  - Log: results/logs/%s\n', log_filename);
+    fprintf(log_fid, '\n');
+    fprintf(log_fid, '═══════════════════════════════════════════════════════════\n');
+    fprintf(log_fid, 'Processing completed successfully\n');
+    fprintf(log_fid, '═══════════════════════════════════════════════════════════\n');
+    
+    fclose(log_fid);
+    fprintf('  • Log file: %s\n', log_filename);
+    fprintf('  • Log location: results/logs/\n');
     
 catch ME
     fprintf('⚠ WARNING: Failed to save results\n');
@@ -308,7 +378,10 @@ fprintf('  ✓ R-Peak Detection: %d peaks detected\n', length(r_locs));
 if ~isempty(HR)
     fprintf('  ✓ Heart Rate: %.1f BPM (mean)\n', mean(HR));
 end
-fprintf('  ✓ Results saved to: %s\n', data_processed);
+fprintf('  ✓ Results saved to:\n');
+fprintf('    - Data: results/reports/\n');
+fprintf('    - Plots: results/plots/\n');
+fprintf('    - Logs: results/logs/\n');
 fprintf('\n');
 
 fprintf(' Pipeline executed successfully!\n\n');
