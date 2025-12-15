@@ -10,15 +10,22 @@ This repository implements a complete automated pipeline for ECG signal processi
 
 ```
 real-Time-ECG-Signal-Processing-Using-MATLAB/
+├── .gitignore
+├── .gitattributes
 ├── README.md
 ├── CEP.prj
-├── test.m
 ├── data/
 │   ├── raw/
 │   │   ├── 100.dat
 │   │   ├── 100.hea
 │   │   ├── 100.atr
-│   │   └── 100.xws
+│   │   ├── 100.xws
+│   │   ├── 103.dat
+│   │   ├── 103.hea
+│   │   ├── 103.atr
+│   │   ├── 103.xws
+│   │   ├── 104.dat / 105.dat / 106.dat
+│   │   └── ... (additional MIT-BIH records)
 │   └── processed/
 │       ├── ecg_results_100_[timestamp].mat
 │       ├── filtered_ecg.mat
@@ -35,9 +42,6 @@ real-Time-ECG-Signal-Processing-Using-MATLAB/
 │       ├── test_preprocess.m
 │       ├── test.m
 │       └── utils/
-├── models/
-│   ├── filter_coefficients.mat
-│   └── pole_zero_plots/
 ├── results/
 │   ├── plots/
 │   │   ├── raw_ecg_[record]_[timestamp].png
